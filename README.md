@@ -9,73 +9,28 @@ Deployable on premise or in the cloud, SAP HANA is an in-memory data platform th
 ## Prerequisites
 
  * This extension requires the Java Machine Agent.
- * The HanaDB Driver **ngdbc.jar** is required
+ * The HanaDB Driver `ngdbc.jar` is required
  * A HanaDB User with the following **privileges** is required:
    * **MONITORING:** this role contains privileges for full read-only access to all metadata, the current system status in system and monitoring views, and the data collected by the statistics server
    * **PUBLIC:** this role contains privileges for filtered read-only access to the system views
 
 ## Installation
 
-Either [Download the Extension from the AppDynamics Marketplace](https://www.appdynamics.com/community/exchange/hanadb-monitoring-extension/), [Download the Extension from the Github release](https://github.com/michaelenglert/hanadb-monitoring-extension/releases/latest) or Build from Source.
+Either [Download the Extension from the AppDynamics Marketplace](https://www.appdynamics.com/community/exchange/hanadb-monitoring-extension/), [Download the Extension from the Github releases](https://github.com/michaelenglert/hanadb-monitoring-extension/releases/latest) or Build from Source.
 
 1. Deploy the `HanaDBMonitor-<VERSION>.zip` file into the `<machine agent home>/monitors` directory.
 
   `> unzip HanaDBMonitor-<VERSION>.zip -d <machine agent home>/monitors/`
 
-2. Copy the **ngdbc.jar** in the `<machine agent home>/monitors/HanaDBMonitor/` folder
+2. Copy the `ngdbc.jar` in the `<machine agent home>/monitors/HanaDBMonitor/` folder
 
-3. Set up config.yml:
+3. Set up `config.yml`. At minimum this is:
 
   ```
-  # HanaDB Servers. 
-  # If you have Failover Partners please concatenate them here like:
-  # "<failoverserver1-host>:<failoverserver1-port>;<failoverserver2-host>:<failoverserver2-port>"
-  # Specify encryptionPassword and encryptionKey if Password Encryption Support is required. If not keep it empty.
-  # User needs the permissions MONITORING and PUBLIC
   clusters:
     - connectionString: "jdbc:sap://<cluster1_host1>:<port>;<cluster1_host2>:<port>?communicationtimeout=20000"
       username: ""
       password: ""
-      encryptionPassword: ""
-      encryptionKey: ""
-    - connectionString: "jdbc:sap://<cluster2_host1>:<port>;<cluster2_host2>:<port>?communicationtimeout=20000"
-      username: ""
-      password: ""
-      encryptionPassword: ""
-      encryptionKey: ""
-
-  # prefix used to show up metrics in AppDynamics
-  metricPathPrefix: "Custom Metrics|HanaDB"
-  # This will create it in specific Tier. Replace <TIER_ID>
-  # metricPrefix:  "Server|Component:<TIER_ID>|Custom Metrics|HanaDB Server|"
-  # number of concurrent tasks
-  numberOfThreads: 10
-
-  # Metrics can be converted from b (bytes), to kb (kilobytes), to gb (gigabytes), to tb (terabytes).
-  # Use the convertFrom and convertTo properties for this.
-  queries:
-    - statement: "select * from M_DISK_USAGE where USED_SIZE >= 0"
-      columns:
-       - name: "HOST"
-         type: "name"
-       - name: "USAGE_TYPE"
-         type: "name"
-       - name: "USED_SIZE"
-         type: "metric"
-         convertFrom: ""
-         convertTo: ""
-    - statement: "select HOST, USED_PHYSICAL_MEMORY, FREE_PHYSICAL_MEMORY from M_HOST_RESOURCE_UTILIZATION"
-      columns:
-       - name: "HOST"
-         type: "name"
-       - name: "USED_PHYSICAL_MEMORY"
-         type: "metric"
-         convertFrom: ""
-         convertTo: ""
-       - name: "FREE_PHYSICAL_MEMORY"
-         type: "metric"
-         convertFrom: ""
-         convertTo: ""
   ```
 
 3. Restart the Machine Agent.
@@ -83,7 +38,7 @@ Either [Download the Extension from the AppDynamics Marketplace](https://www.app
 ## Build from Source
 
 1. Clone this repository
-2. Run `mvn clean install`
+2. Run `mvn -DskipTests clean install`
 3. The `HanaDBMonitor-<VERSION>.zip` file can be found in the `target` directory
 
 ## Directory Structure
@@ -111,7 +66,6 @@ Either [Download the Extension from the AppDynamics Marketplace](https://www.app
 </tr>
 </tbody>
 </table>
-
 
 ## Metrics
 
@@ -150,10 +104,10 @@ queries:
 
 ## Password Encryption Support
 
-To avoid setting the clear text password in the config.yml. Please follow the process to encrypt the password and set the encrypted password and the key in the config.yml
+To avoid setting the clear text password in the `config.yml`. Please follow the process to encrypt the password and set the encrypted password and the key in the `config.yml`.
 
-* Download the util jar to encrypt the password from [here](https://github.com/Appdynamics/maven-repo/blob/master/releases/com/appdynamics/appd-exts-commons/2.0.0/appd-exts-commons-2.0.0.jar)
-* Encrypt password from the commandline 
+* Download the util jar to encrypt the password from [here](https://github.com/Appdynamics/maven-repo/raw/master/releases/com/appdynamics/appd-exts-commons/2.1.0/appd-exts-commons-2.1.0.jar)
+* Encrypt password from the commandline
   * `java -cp appd-exts-commons-<VERSION>.jar com.appdynamics.extensions.crypto.Encryptor myKey myPassword`
 
 ## Contributing
@@ -162,7 +116,13 @@ Always feel free to fork and contribute any changes directly via [GitHub](https:
 
 ## Troubleshoot
 
-* If you encounter Exceptions with `[Read timed out]` please check the `communicationtimeout` setting within the `connectionString`. The query and the processing time might not fit into the specified window.
+1. Verify Machine Agent Data: Please start the Machine Agent without the extension and make sure that it reports data. Verify that the machine agent status is UP and it is reporting Hardware Metrics.
+2. `config.yml`: Validate the file [here](http://www.yamllint.com/).
+3. Metric Limit: Please start the machine agent with the argument `-Dappdynamics.agent.maxMetrics=5000` if there is a metric limit reached error in the logs. If you don't see the expected metrics, this could be the cause.
+4. Check Logs: There could be some obvious errors in the machine agent logs. Please take a look.
+5. `The config cannot be null` error: This usually happens when on a windows machine in `monitor.xml` you give `config.yml` file path with linux file path separator `/`. Use Windows file path separator `\` e.g. `monitors\Monitor\config.yml`. For Windows, please specify the complete path.
+6. Collect Debug Logs: Edit the file, `<MachineAgent>/conf/logging/log4j.xml` and update the level of the appender `com.appdynamics` and `com.singularity` to debug. Let it run for 5-10 minutes and attach the logs to a support ticket.
+7. If you encounter Exceptions with `[Read timed out]` please check the `communicationtimeout` setting within the `connectionString`. The query and the processing time might not fit into the specified window.
 
 ## Support
 
